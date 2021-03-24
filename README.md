@@ -11,7 +11,7 @@ This project assignment might not seem big, but it definitley takes more time th
 
 I chose to have little to no starter code, as for a Rust beginner it is difficult to jump into someone elses code and understand what is going on. That is better for a later assignment. I feel like for the introduction assigments, it is better for students to experiment with Rust on their own and get things wrong and learn.
 
-Author(s):
+Author:
 
 - Joey DeGrand
 
@@ -25,7 +25,7 @@ Main
 - If the argument requirments aren't met, print a usage message and exit the program
 - From main, you will also call functions that generate and solve mazes
 - When you call to solve for a maze, if there is no solution it should print no solution. If not, the mazes `color_print_maze` should be called which will pretty print the solution.
----
+
 Maze
 ---
 - There is a struct that is called Maze, in which you can choose to represesnt a maze however you like
@@ -48,10 +48,10 @@ Maze
 - When you solve the maze, it should be stored somewhere in your struct, as when you call `color_print_maze`, it should print out the maze with the solution.
 - This function returns a `Option`; `Some(n)` if it is solvable and (n can be the number of moves if you want to add that as a small challenge), or `None` if a maze is not solvable.
 
-`fmt`
+`fmt` function implementation
 - This method should print a maze object in the format of a maze file, so you can easily call `println` and get the string representation of the maze.
 - The maze file is described in the next section.
----
+
 Generate
 ---
 - When there program is run with `generate x y`, the program must generate a valid, solvable maze, with dimensions x by y.
@@ -82,12 +82,19 @@ Generate
   `111111111`<br>
   `010101010`<br><br>
 - This means when we generate a maze that is x by y, it is really `(x + (x - 1))*(y + (y - 1))`
----
+
 Parse Maze
 ---
 - `parse_maze` should be called by main. It is given an `&str`, which should be the string that is read from the file
 - This function is what turns a String into an initial Maze object, hence the return type is a `Maze` instance
 - This is where you should make sure that there are no invalid characters, and that all rows and columns are the same size
+
+Usage
+---
+- You should be able to save the output of your generated mazes into a maze file and then solve them using your programs solve argument.
+<br>`cargo run generate 20 20 > my_maze.txt`
+<br>
+`cargo run solve my_maze.txt`<br>
 
 # Limitations and Shortcomings
 - There seems to be too much specification and rules for parsing a maze. This isn't the focus of the assignment, and is just tedious.
