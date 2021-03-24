@@ -1,3 +1,6 @@
+// @author: Joey DeGrand, jpd3263@rit.edu
+// Date:    03/23/2021
+
 use std::fmt::Write;
 use std::fs;
 use std::env;
@@ -18,8 +21,14 @@ fn main() {
             if action == "solve" {
                 let src: String = fs::read_to_string(file).unwrap_or_else(|_| panic!("Cannot locate or read file: {}", file));
                 let mut maze = parse_maze(&src);
-                maze.solve();
-                maze.color_print_maze();
+                let res = maze.solve();
+                match res {
+                    Some(_) => {
+                        maze.color_print_maze();
+                    }, None => {
+                        println!("No result!");
+                    }
+                }
 
             } else {
                 println!("Invalid arguments");
@@ -36,7 +45,7 @@ fn main() {
                         }
                         u
                     },
-                    Err(e) => {
+                    Err(_e) => {
                         println!("Invalid width argument");
                         process::exit(1);
                     }
@@ -49,11 +58,15 @@ fn main() {
                         }
                         u
                     },
-                    Err(e) => {
+                    Err(_e) => {
                         println!("Invalid height argument");
                         process::exit(1);
                     }
                 };
+                if w != h {
+                    println!("Height and width must be the same");
+                    process::exit(1);
+                }
                 let maze = generate_maze(w, h);
                 println!("{}", maze);
             } else {
@@ -67,157 +80,6 @@ fn main() {
         }
     };
 }
-
-fn color_print(file: &str) {
-    for ch in file.chars() {
-        if ch == '0' {
-            print!("{}", "  ".on_blue());
-        } else if ch == '1' {
-            print!("{}", "  ".on_magenta());
-        } else {
-            println!();
-        }
-    }
-    println!();
-}
-
-fn parse_maze(src: &str) -> Maze {
-    let mut rows = 0;
-    let mut cols = 0;
-    let mut col_count = 0;
-
-    for c in src.chars() {
-        if cols == 0 && c == '\n' {
-            cols = col_count;
-            col_count = 0;
-            rows = rows + 1;
-        } else if c == '\n' && col_count != cols {
-            println!("All columns must be the same size");
-            process::exit(1);
-        } else if c == '\n' {
-            col_count = 0;
-            rows += 1;
-        } else {
-            col_count += 1;
-        }
-    }
-
-    if rows < 4 || cols < 4 {
-        println!("Maze dimensions must be at least 4x4");
-        process::exit(1);
-    }
-
-    let mut cells = vec!['0'; cols * rows];
-    let mut col_index = 0;
-    let mut row_index = 0;
-
-    for c in src.chars() {
-        if c == '\n' {
-            col_index = 0;
-            row_index += 1;
-        } else {
-            cells[cols * row_index + col_index] = c;
-            col_index += 1;
-        }
-    }
-    Maze { rows, cols, cells }
-}
-
-struct Maze {
-    rows: usize,
-    cols: usize,
-    cells: Vec<char>,
-}
-
-impl Maze {
-    fn color_print_maze(&self) {
-        let mut index = 0;
-        for c in self.cells.iter() {
-            if index == self.rows {
-                println!();
-                index = 0;
-            }
-            if *c == '0' {
-                print!("{}", "  ".on_white());
-            } else if *c == '2' {
-                print!("{}", "  ".on_cyan());
-            } else {
-                print!("{}", "  ".on_black());
-            }
-            index += 1;
-        }
-        println!();
-    }
-
-    fn solve(&mut self) {
-        let mut q: VecDeque<(usize, usize)> = VecDeque::new();
-        let mut visited: HashSet<(usize, usize)> = HashSet::new();
-        let mut previous: HashMap<(usize, usize), (usize, usize)> = HashMap::new();
-
-        q.push_back((0, 0));
-        visited.insert((0, 0));
-        previous.insert((0, 0), (self.rows, self.cols));
-        while q.len() > 0 {
-            let curr = q.pop_front().unwrap();
-            if curr == (self.rows - 1, self.cols - 1) {
-                self.cells[self.cols * (self.rows - 1) + (self.cols - 1)] = '2';
-                let mut temp = (self.rows - 1, self.cols - 1);
-                let mut back = previous.get(&(self.rows - 1, self.cols - 1)).unwrap();
-                while back != &(self.rows, self.cols) {
-                    self.cells[self.cols * temp.0 + temp.1] = '2';
-                    if back.0 < temp.0 {
-                        self.cells[self.cols * (temp.0 - 1) + temp.1] = '2';
-                    } else if back.0 > temp.0 {
-                        self.cells[self.cols * (back.0 - 1) + temp.1] = '2';
-                    } else if back.1 < temp.1 {
-                        self.cells[self.cols * temp.0 + (temp.1 - 1)] = '2';
-                    } else if back.1 > temp.1 {
-                        self.cells[self.cols * temp.0 + (back.1 - 1)] = '2';
-                    }
-                    temp = *back;
-                    back = previous.get(back).unwrap();
-                }
-                self.cells[self.cols * temp.0 + temp.1] = '2';
-            }
-            let mut neighbors: Vec<(usize, usize)> = Vec::new();
-            if curr.0 > 1 && !visited.contains(&(curr.0 - 2, curr.1)) && self.cells[self.cols * (curr.0 - 1) + curr.1] != '1' {
-                neighbors.push((curr.0 - 2, curr.1));
-            }
-            if curr.0 < self.rows - 2 && !visited.contains(&(curr.0 + 2, curr.1)) && self.cells[self.cols * (curr.0 + 1) + curr.1] != '1' {
-                neighbors.push((curr.0 + 2, curr.1));
-            }
-            if curr.1 > 1 && !visited.contains(&(curr.0, curr.1 - 2)) && self.cells[self.cols * curr.0 + (curr.1 - 1)] != '1' {
-                neighbors.push((curr.0, curr.1 - 2));
-            }
-            if curr.1 < self.cols - 2 && !visited.contains(&(curr.0, curr.1 + 2)) && self.cells[self.cols * curr.0 + (curr.1 + 1)] != '1' {
-                neighbors.push((curr.0, curr.1 + 2));
-            }
-            for n in neighbors.iter() {
-                q.push_back(*n);
-                visited.insert(*n);
-                previous.insert(*n, curr);
-            }
-        }
-
-    }
-}
-
-impl Display for Maze {
-    
-fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-    let mut index = 0;    
-    for c in self.cells.iter() {
-            if index == self.rows {
-                f.write_char('\n')?;
-                index = 0;
-            }
-            f.write_char(*c)?;
-            index += 1;
-        }
-        Ok(())
-    }
-}
-
 
 fn generate_maze(width: usize, height: usize) -> Maze {
     let mut rng = rand::thread_rng();
@@ -280,4 +142,151 @@ fn generate_maze(width: usize, height: usize) -> Maze {
 
     Maze { rows: height * 2 - 1, cols: width * 2 - 1, cells: blank }
 
+}
+
+fn parse_maze(src: &str) -> Maze {
+    let mut rows = 0;
+    let mut cols = 0;
+    let mut col_count = 0;
+
+    for c in src.chars() {
+        if cols == 0 && c == '\n' {
+            cols = col_count;
+            col_count = 0;
+            rows = rows + 1;
+        } else if c == '\n' && col_count != cols {
+            println!("All columns must be the same size");
+            process::exit(1);
+        } else if c == '\n' {
+            col_count = 0;
+            rows += 1;
+        } else if c != '0' && c!= '1' && c != '\n' {
+            println!("Invalid character: {}", c);
+            process::exit(1);
+        } else {
+            col_count += 1;
+        }
+    }
+
+    if rows < 4 || cols < 4 {
+        println!("Maze dimensions must be at least 4x4");
+        process::exit(1);
+    }
+
+    let mut cells = vec!['0'; cols * rows];
+    let mut col_index = 0;
+    let mut row_index = 0;
+
+    for c in src.chars() {
+        if c == '\n' {
+            col_index = 0;
+            row_index += 1;
+        } else {
+            cells[cols * row_index + col_index] = c;
+            col_index += 1;
+        }
+    }
+
+    if cells[0] != '0' || cells[cells.len() - 1] != '0' {
+        println!("Top left and bottom right should both be '0', as the are entry and exit points");
+        process::exit(1);
+    }
+
+    Maze { rows, cols, cells }
+}
+
+struct Maze {
+    rows: usize,
+    cols: usize,
+    cells: Vec<char>,
+}
+
+impl Maze {
+    fn color_print_maze(&self) {
+        let mut index = 0;
+        for c in self.cells.iter() {
+            if index == self.rows {
+                println!();
+                index = 0;
+            }
+            if *c == '0' {
+                print!("{}", "  ".on_white());
+            } else if *c == '2' {
+                print!("{}", "  ".on_cyan());
+            } else {
+                print!("{}", "  ".on_black());
+            }
+            index += 1;
+        }
+        println!();
+    }
+
+    fn solve(&mut self) -> Option<u8> {
+        let mut q: VecDeque<(usize, usize)> = VecDeque::new();
+        let mut visited: HashSet<(usize, usize)> = HashSet::new();
+        let mut previous: HashMap<(usize, usize), (usize, usize)> = HashMap::new();
+
+        q.push_back((0, 0));
+        visited.insert((0, 0));
+        previous.insert((0, 0), (self.cols, self.rows));
+        while q.len() > 0 {
+            let curr = q.pop_front().unwrap();
+            if curr == (self.cols - 1, self.rows - 1) {
+                self.cells[self.cols * (self.rows - 1) + (self.cols - 1)] = '2';
+                let mut temp = (self.rows - 1, self.cols - 1,);
+                let mut back = previous.get(&(self.rows - 1, self.cols - 1)).unwrap();
+                while back != &(self.rows, self.cols) {
+                    self.cells[self.cols * temp.0 + temp.1] = '2';
+                    if back.0 < temp.0 {
+                        self.cells[self.cols * (temp.0 - 1) + temp.1] = '2';
+                    } else if back.0 > temp.0 {
+                        self.cells[self.cols * (back.0 - 1) + temp.1] = '2';
+                    } else if back.1 < temp.1 {
+                        self.cells[self.cols * temp.0 + (temp.1 - 1)] = '2';
+                    } else if back.1 > temp.1 {
+                        self.cells[self.cols * temp.0 + (back.1 - 1)] = '2';
+                    }
+                    temp = *back;
+                    back = previous.get(back).unwrap();
+                }
+                self.cells[self.cols * temp.0 + temp.1] = '2';
+                return Some(0);
+            }
+            let mut neighbors: Vec<(usize, usize)> = Vec::new();
+            if curr.0 > 1 && !visited.contains(&(curr.0 - 2, curr.1)) && self.cells[self.cols * (curr.0 - 1) + curr.1] != '1' {
+                neighbors.push((curr.0 - 2, curr.1));
+            }
+            if curr.0 < self.rows - 2 && !visited.contains(&(curr.0 + 2, curr.1)) && self.cells[self.cols * (curr.0 + 1) + curr.1] != '1' {
+                neighbors.push((curr.0 + 2, curr.1));
+            }
+            if curr.1 > 1 && !visited.contains(&(curr.0, curr.1 - 2)) && self.cells[self.cols * curr.0 + (curr.1 - 1)] != '1' {
+                neighbors.push((curr.0, curr.1 - 2));
+            }
+            if curr.1 < self.cols - 2 && !visited.contains(&(curr.0, curr.1 + 2)) && self.cells[self.cols * curr.0 + (curr.1 + 1)] != '1' {
+                neighbors.push((curr.0, curr.1 + 2));
+            }
+            for n in neighbors.iter() {
+                q.push_back(*n);
+                visited.insert(*n);
+                previous.insert(*n, curr);
+            }
+        }
+        None
+    }
+}
+
+impl Display for Maze {
+    
+fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+    let mut index = 0;    
+    for c in self.cells.iter() {
+            if index == self.rows {
+                f.write_char('\n')?;
+                index = 0;
+            }
+            f.write_char(*c)?;
+            index += 1;
+        }
+        Ok(())
+    }
 }
